@@ -12,8 +12,8 @@ const appB = expressB();
 appB.use(expressB.json());
 
 // Load TLS and macaroon
-const lndCert = fsB.readFileSync(path.resolve(__dirname, '../tls.cert'));
-const macaroon = fsB.readFileSync(path.resolve(__dirname, '../admin.macaroon')).toString('hex');
+const lndCert = fsB.readFileSync(path.resolve(__dirname, './tls.cert'));
+const macaroon = fsB.readFileSync(path.resolve(__dirname, './admin.macaroon')).toString('hex');
 
 const credentials = grpc.credentials.createSsl(lndCert);
 const metadata = new grpc.Metadata();
@@ -24,21 +24,31 @@ const macaroonCreds = grpc.credentials.createFromMetadataGenerator((params, call
 const combinedCreds = grpc.credentials.combineChannelCredentials(credentials, macaroonCreds);
 
 const packageDefinition = protoLoader.loadSync(
-  path.resolve(__dirname, '../rpc.proto'),
-  { keepCase: true, longs: String, enums: String, defaults: true, oneofs: true }
+  path.resolve(__dirname, '../lnd-proto/lightning.proto'),
+  {
+    keepCase: true,
+    longs: String,
+    enums: String,
+    defaults: true,
+    oneofs: true
+  }
 );
 const lnrpc = grpc.loadPackageDefinition(packageDefinition).lnrpc;
-const lnd = new lnrpc.Lightning('localhost:10009', combinedCreds); // Adjust to Polar port if needed
+const lnd = new lnrpc.Lightning('127.0.0.1:10005', combinedCreds); // Adjust to Polar port if needed
 
 // POST /receive-note — verifies and pays invoice
 appB.post('/receive-note', (req, res) => {
   const note = req.body;
-  const { signature, issuer_pubkey, invoice, ...originalData } = note;
+  const { signature, ...originalData } = note;
 
   const noteString = JSON.stringify(originalData);
   const hash = bitcoinB.crypto.sha256(Buffer.from(noteString));
   const sigBuffer = Buffer.from(signature, 'hex');
-  const pubKeyBuffer = Buffer.from(issuer_pubkey, 'hex');
+  const pubKeyBuffer = Buffer.from(note.issuer_pubkey, 'hex');
+
+  if (!eccB.isPoint(pubKeyBuffer)) {
+    return res.status(400).json({ error: 'Malformed or invalid public key: not on curve' });
+  }
 
   const key = ECPairB.fromPublicKey(pubKeyBuffer);
   const isValid = key.verify(hash, sigBuffer);
@@ -49,7 +59,7 @@ appB.post('/receive-note', (req, res) => {
 
   console.log('✅ Valid note received from issuer. Paying invoice via LND...');
 
-  lnd.sendPaymentSync({ payment_request: invoice }, (err, response) => {
+  lnd.sendPaymentSync({ payment_request: note.invoice }, (err, response) => {
     if (err || response.payment_error) {
       console.error('❌ Payment failed:', err || response.payment_error);
       return res.status(500).json({ error: 'Payment failed' });

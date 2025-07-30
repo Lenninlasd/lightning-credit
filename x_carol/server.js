@@ -13,9 +13,8 @@ const app = express();
 app.use(express.json());
 
 // Mock private key of node X (DO NOT use in production)
-console.log("ECPair", ECPair);
 const keyPair = ECPair.makeRandom();
-const publicKey = keyPair.publicKey.toString('hex');
+const publicKey = Buffer.from(keyPair.publicKey).toString('hex');
 
 // Endpoint that issues the promissory note
 app.post('/issue-note', (req, res) => {
@@ -38,7 +37,7 @@ app.post('/issue-note', (req, res) => {
   // Signed Note
   const noteString = JSON.stringify(note);
   const hash = bitcoin.crypto.sha256(Buffer.from(noteString));
-  const signature = keyPair.sign(hash).toString('hex');
+  const signature = Buffer.from(keyPair.sign(hash)).toString('hex');
 
   const signedNote = { ...note, signature };
 

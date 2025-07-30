@@ -10,6 +10,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "@grpc/grpc-js": "^1.13.4",
+    "@grpc/proto-loader": "^0.8.0",
     "axios": "^1.11.0",
     "bitcoinjs-lib": "^6.1.7",
     "ecpair": "^3.0.0",

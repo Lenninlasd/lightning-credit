@@ -62,7 +62,7 @@ appB.post('/receive-note', (req, res) => {
   lnd.sendPaymentSync({ payment_request: note.invoice }, (err, response) => {
     if (err || response.payment_error) {
       console.error('❌ Payment failed:', err || response.payment_error);
-      return res.status(500).json({ error: 'Payment failed' });
+      return res.status(500).json({ error: `Payment failed: ${err || response.payment_error}` });
     }
 
     console.log('✅ Invoice paid via LND');

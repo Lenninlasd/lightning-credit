@@ -8,7 +8,7 @@ async function initiatePaymentFlow() {
   };
 
   try {
-    const response = await axios.post('http://localhost:3001/issue-note', requestBody);
+    const response = await axios.post('http://localhost:3000/issue-note', requestBody);
     console.log('📝 Promissory note issued:', response.data.note);
 
     const noteToForward = response.data.note;
